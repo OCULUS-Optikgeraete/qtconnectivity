@@ -97,6 +97,11 @@ QList<QBluetoothAddress> QBluetoothLocalDevice::connectedDevices() const
     return QList<QBluetoothAddress>();
 }
 
+QList<QBluetoothAddress> QBluetoothLocalDevice::pairedDevices() const
+{
+    return QList<QBluetoothAddress>();
+}
+
 QList<QBluetoothHostInfo> QBluetoothLocalDevice::allDevices()
 {
     QList<QBluetoothHostInfo> localDevices;

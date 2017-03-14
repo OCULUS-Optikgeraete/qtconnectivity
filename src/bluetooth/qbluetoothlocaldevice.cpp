@@ -247,6 +247,17 @@ bool QBluetoothLocalDevice::isValid() const
 */
 
 /*!
+  \fn QList<QBluetoothAddress> QBluetoothLocalDevice::pairedDevices() const
+  \since 5.xx
+
+  Returns the list of paired devices.
+
+  This currently works only on Linux (bluez 5) and Android.
+
+  \sa connectedDevices()
+*/
+
+/*!
   \fn QBluetoothLocalDevice::pairingStatus(const QBluetoothAddress &address) const
 
   Returns the current bluetooth pairing status of \a address, if it's unpaired, paired, or paired and authorized.

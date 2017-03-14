@@ -429,6 +429,13 @@ QList<QBluetoothAddress> QBluetoothLocalDevice::connectedDevices() const
     return connectedDevices;
 }
 
+QList<QBluetoothAddress> QBluetoothLocalDevice::pairedDevices() const
+{
+    // TODO
+    qCWarning(QT_BT_OSX) << Q_FUNC_INFO << "pairedDevices() ist currently not implemented on this platform";
+    return QList<QBluetoothAddress>();
+}
+
 QList<QBluetoothHostInfo> QBluetoothLocalDevice::allDevices()
 {
     QList<QBluetoothHostInfo> localDevices;

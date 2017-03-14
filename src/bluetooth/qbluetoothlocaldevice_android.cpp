@@ -458,4 +458,30 @@ QList<QBluetoothAddress> QBluetoothLocalDevice::connectedDevices() const
     return knownAddresses;
 }
 
+QList<QBluetoothAddress> QBluetoothLocalDevice::pairedDevices() const
+{
+    QList<QBluetoothAddress> pairedDevices;
+    if (d_ptr->adapter()) {
+        QAndroidJniObject bondedDevicesSet = d_ptr->adapter()->callObjectMethod("getBondedDevices", "()Ljava/util/Set;");
+
+        QAndroidJniObject bondedDevices = bondedDevicesSet.callObjectMethod("toArray", "()[Ljava/lang/Object;");
+        if (!bondedDevices.isValid())
+            return QList<QBluetoothAddress>();
+
+        jobjectArray bondedDevicesArray = bondedDevices.object<jobjectArray>();
+        if (!bondedDevicesArray)
+            return QList<QBluetoothAddress>();
+
+        QAndroidJniEnvironment env;
+        jint size = env->GetArrayLength(bondedDevicesArray);
+        for (int i = 0; i < size; i++) {
+            QAndroidJniObject device = env->GetObjectArrayElement(bondedDevicesArray, i);
+            QBluetoothAddress address(device.callObjectMethod("getAddress", "()Ljava/lang/String;").toString());
+            if (!address.isNull())
+                pairedDevices.append(address);
+        }
+    }
+    return pairedDevices;
+}
+
 QT_END_NAMESPACE

@@ -140,6 +140,7 @@ public:
 
     QSet<OrgBluezDeviceInterface *> devices;
     QSet<QBluetoothAddress> connectedDevicesSet;
+    QSet<QBluetoothAddress> pairedDevicesSet;
     OrgBluezAdapterInterface *adapter; //Bluez 4
     OrgBluezAdapter1Interface *adapterBluez5; //Bluez 5
     OrgFreedesktopDBusPropertiesInterface *adapterProperties; //Bluez 5
@@ -149,6 +150,7 @@ public:
     OrgBluezManagerInterface *manager;
 
     QList<QBluetoothAddress> connectedDevices() const;
+    QList<QBluetoothAddress> pairedDevices() const;
 
     QString agent_path;
     QBluetoothAddress localAddress;

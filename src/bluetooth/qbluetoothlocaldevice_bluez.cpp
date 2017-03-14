@@ -206,6 +206,11 @@ QList<QBluetoothAddress> QBluetoothLocalDevice::connectedDevices() const
     return d_ptr->connectedDevices();
 }
 
+QList<QBluetoothAddress> QBluetoothLocalDevice::pairedDevices() const
+{
+    return d_ptr->pairedDevices();
+}
+
 QList<QBluetoothHostInfo> QBluetoothLocalDevice::allDevices()
 {
     QList<QBluetoothHostInfo> localDevices;
@@ -721,6 +726,10 @@ void QBluetoothLocalDevicePrivate::connectDeviceChanges()
                         QBluetoothAddress address(ifaceValues.value(QStringLiteral("Address")).toString());
                         connectedDevicesSet.insert(address);
                     }
+                    if (ifaceValues.value(QStringLiteral("Paired"), false).toBool()) {
+                        QBluetoothAddress address(ifaceValues.value(QStringLiteral("Address")).toString());
+                        pairedDevicesSet.insert(address);
+                    }
                 }
             }
         }
@@ -882,26 +891,41 @@ void QBluetoothLocalDevicePrivate::PropertiesChanged(const QString &interface,
 
             currentMode = mode;
         }
-    } else if (interface == QStringLiteral("org.bluez.Device1")
-               && changed_properties.contains(QStringLiteral("Connected"))) {
-        // update list of connected devices
+    } else if (interface == QStringLiteral("org.bluez.Device1")) {
         OrgFreedesktopDBusPropertiesInterface *senderIface =
                 qobject_cast<OrgFreedesktopDBusPropertiesInterface*>(sender());
         if (!senderIface)
             return;
 
         const QString currentPath = senderIface->path();
-        bool isConnected = changed_properties.value(QStringLiteral("Connected"), false).toBool();
-        OrgBluezDevice1Interface device(QStringLiteral("org.bluez"), currentPath,
-                                        QDBusConnection::systemBus());
-        const QBluetoothAddress changedAddress(device.address());
-        bool isInSet = connectedDevicesSet.contains(changedAddress);
-        if (isConnected && !isInSet) {
-            connectedDevicesSet.insert(changedAddress);
-            emit q_ptr->deviceConnected(changedAddress);
-        } else if (!isConnected && isInSet) {
-            connectedDevicesSet.remove(changedAddress);
-            emit q_ptr->deviceDisconnected(changedAddress);
+        if (changed_properties.contains(QStringLiteral("Connected"))) {
+            // update list of connected devices
+
+            bool isConnected = changed_properties.value(QStringLiteral("Connected"), false).toBool();
+            OrgBluezDevice1Interface device(QStringLiteral("org.bluez"), currentPath,
+                                            QDBusConnection::systemBus());
+            const QBluetoothAddress changedAddress(device.address());
+            bool isInSet = connectedDevicesSet.contains(changedAddress);
+            if (isConnected && !isInSet) {
+                connectedDevicesSet.insert(changedAddress);
+                emit q_ptr->deviceConnected(changedAddress);
+            } else if (!isConnected && isInSet) {
+                connectedDevicesSet.remove(changedAddress);
+                emit q_ptr->deviceDisconnected(changedAddress);
+            }
+        } else if (changed_properties.contains(QStringLiteral("Paired"))) {
+            // update list of paired devices
+
+            bool isPaired = changed_properties.value(QStringLiteral("Paired"), false).toBool();
+            OrgBluezDevice1Interface device(QStringLiteral("org.bluez"), currentPath,
+                                            QDBusConnection::systemBus());
+            const QBluetoothAddress changedAddress(device.address());
+            bool isInSet = pairedDevicesSet.contains(changedAddress);
+            if (isPaired && !isInSet) {
+                pairedDevicesSet.insert(changedAddress);
+            } else if (!isPaired && isInSet) {
+                pairedDevicesSet.remove(changedAddress);
+            }
         }
     }
 }
@@ -926,6 +950,10 @@ void QBluetoothLocalDevicePrivate::InterfacesAdded(const QDBusObjectPath &object
                 QBluetoothAddress address(ifaceValues.value(QStringLiteral("Address")).toString());
                 connectedDevicesSet.insert(address);
                 emit q_ptr->deviceConnected(address);
+            }
+            if (ifaceValues.value(QStringLiteral("Paired"), false).toBool()) {
+                QBluetoothAddress address(ifaceValues.value(QStringLiteral("Address")).toString());
+                pairedDevicesSet.insert(address);
             }
         }
     }
@@ -958,6 +986,7 @@ void QBluetoothLocalDevicePrivate::InterfacesRemoved(const QDBusObjectPath &obje
             bool found = connectedDevicesSet.remove(address);
             if (found)
                 emit q_ptr->deviceDisconnected(address);
+            pairedDevicesSet.remove(address);
         }
     }
 
@@ -980,6 +1009,7 @@ void QBluetoothLocalDevicePrivate::InterfacesRemoved(const QDBusObjectPath &obje
         qDeleteAll(deviceChangeMonitors);
         deviceChangeMonitors.clear();
         connectedDevicesSet.clear();
+        pairedDevicesSet.clear();
     }
 }
 
@@ -1019,6 +1049,7 @@ void QBluetoothLocalDevicePrivate::adapterRemoved(const QDBusObjectPath &deviceP
     qDeleteAll(devices);
     devices.clear();
     connectedDevicesSet.clear();
+    pairedDevicesSet.clear();
 }
 
 void QBluetoothLocalDevicePrivate::RequestConfirmation(const QDBusObjectPath &in0, uint in1)
@@ -1059,6 +1090,13 @@ void QBluetoothLocalDevicePrivate::_q_deviceCreated(const QDBusObjectPath &devic
         connectedDevicesSet.remove(address);
         emit q_ptr->deviceDisconnected(address);
     }
+
+    const bool paired = properties.value().value(QStringLiteral("Paired")).toBool();
+    if (paired) {
+        pairedDevicesSet.insert(address);
+    } else {
+        pairedDevicesSet.remove(address);
+    }
 }
 
 void QBluetoothLocalDevicePrivate::_q_deviceRemoved(const QDBusObjectPath &device)
@@ -1076,24 +1114,42 @@ void QBluetoothLocalDevicePrivate::_q_devicePropertyChanged(const QString &prope
                                                             const QDBusVariant &value)
 {
     OrgBluezDeviceInterface *deviceInterface = qobject_cast<OrgBluezDeviceInterface *>(sender());
-    if (deviceInterface && property == QLatin1String("Connected")) {
-        QDBusPendingReply<QVariantMap> propertiesReply = deviceInterface->GetProperties();
-        propertiesReply.waitForFinished();
-        if (propertiesReply.isError()) {
-            qCWarning(QT_BT_BLUEZ) << propertiesReply.error().message();
+    if (deviceInterface) {
+        QBluetoothAddress address;
+        if (property == QLatin1String("Connected") || property == QLatin1String("Paired")) {
+            QDBusPendingReply<QVariantMap> propertiesReply = deviceInterface->GetProperties();
+            propertiesReply.waitForFinished();
+            if (propertiesReply.isError()) {
+                qCWarning(QT_BT_BLUEZ) << propertiesReply.error().message();
+                return;
+            }
+            const QVariantMap properties = propertiesReply.value();
+            address = QBluetoothAddress(properties.value(QStringLiteral("Address")).toString());
+        }
+        if (address.isNull()) {
+            qCWarning(QT_BT_BLUEZ) << Q_FUNC_INFO << "address is null";
             return;
         }
-        const QVariantMap properties = propertiesReply.value();
-        const QBluetoothAddress address
-            = QBluetoothAddress(properties.value(QStringLiteral("Address")).toString());
-        const bool connected = value.variant().toBool();
 
-        if (connected) {
-            connectedDevicesSet.insert(address);
-            emit q_ptr->deviceConnected(address);
-        } else {
-            connectedDevicesSet.remove(address);
-            emit q_ptr->deviceDisconnected(address);
+        if (property == QLatin1String("Connected")) {
+            const bool connected = value.variant().toBool();
+
+            if (connected) {
+                connectedDevicesSet.insert(address);
+                emit q_ptr->deviceConnected(address);
+            } else {
+                connectedDevicesSet.remove(address);
+                emit q_ptr->deviceDisconnected(address);
+            }
+        }
+        else if (property == QLatin1String("Paired")) {
+            const bool paired = value.variant().toBool();
+
+            if (paired) {
+                pairedDevicesSet.insert(address);
+            } else {
+                pairedDevicesSet.remove(address);
+            }
         }
     }
 }
@@ -1130,12 +1186,21 @@ void QBluetoothLocalDevicePrivate::createCache()
             connectedDevicesSet.insert(
                 QBluetoothAddress(properties.value().value(QStringLiteral("Address")).toString()));
         }
+        if (properties.value().value(QStringLiteral("Paired")).toBool()) {
+            pairedDevicesSet.insert(
+                QBluetoothAddress(properties.value().value(QStringLiteral("Address")).toString()));
+        }
     }
 }
 
 QList<QBluetoothAddress> QBluetoothLocalDevicePrivate::connectedDevices() const
 {
     return connectedDevicesSet.toList();
+}
+
+QList<QBluetoothAddress> QBluetoothLocalDevicePrivate::pairedDevices() const
+{
+    return pairedDevicesSet.toList();
 }
 
 void QBluetoothLocalDevice::pairingConfirmation(bool confirmation)

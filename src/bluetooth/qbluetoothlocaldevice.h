@@ -91,6 +91,7 @@ public:
     void setHostMode(QBluetoothLocalDevice::HostMode mode);
     HostMode hostMode() const;
     QList<QBluetoothAddress> connectedDevices() const;
+    QList<QBluetoothAddress> pairedDevices() const;
 
     void powerOn();
 
