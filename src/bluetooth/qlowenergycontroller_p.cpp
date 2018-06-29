@@ -87,6 +87,12 @@ void QLowEnergyControllerPrivate::discoverServices()
 
 }
 
+bool QLowEnergyControllerPrivate::clearServicesCache()
+{
+    return false;
+}
+
+
 void QLowEnergyControllerPrivate::discoverServiceDetails(const QBluetoothUuid &/*service*/)
 {
 

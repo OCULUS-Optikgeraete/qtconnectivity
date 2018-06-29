@@ -576,6 +576,12 @@ void QLowEnergyControllerPrivate::discoverServices()
     emit q->discoveryFinished();
 }
 
+bool QLowEnergyControllerPrivate::clearServicesCache()
+{
+    qCWarning(QT_BT_WINRT) << Q_FUNC_INFO << "Not implemented!";
+    return false;
+}
+
 void QLowEnergyControllerPrivate::discoverServiceDetails(const QBluetoothUuid &service)
 {
     qCDebug(QT_BT_WINRT) << __FUNCTION__ << service;

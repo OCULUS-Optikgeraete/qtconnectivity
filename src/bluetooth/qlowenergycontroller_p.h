@@ -129,6 +129,7 @@ public:
     void disconnectFromDevice();
 
     void discoverServices();
+    bool clearServicesCache();
     void invalidateServices();
 
     void discoverServiceDetails(const QBluetoothUuid &service);

@@ -199,6 +199,22 @@ void QLowEnergyControllerPrivate::discoverServices()
     }
 }
 
+bool QLowEnergyControllerPrivate::clearServicesCache()
+{
+    bool ok = false;
+    if (hub) {
+        qCDebug(QT_BT_ANDROID) << "Refreshing services";
+        ok = hub->javaObject().callMethod<jboolean>("refreshServices");
+    }
+    if (ok) {
+        setState(QLowEnergyController::ConnectedState);
+    } else {
+        qCWarning(QT_BT_ANDROID) << "Failed to call refreshServices()";
+        setError(QLowEnergyController::NetworkError);
+    }
+    return ok;
+}
+
 void QLowEnergyControllerPrivate::discoverServiceDetails(const QBluetoothUuid &service)
 {
     if (!serviceList.contains(service)) {

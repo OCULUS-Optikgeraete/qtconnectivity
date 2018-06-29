@@ -1586,6 +1586,12 @@ void QLowEnergyControllerPrivate::discoverServices()
     sendReadByGroupRequest(0x0001, 0xFFFF, GATT_PRIMARY_SERVICE);
 }
 
+bool QLowEnergyControllerPrivate::clearServicesCache()
+{
+    qCWarning(QT_BT_BLUEZ) << Q_FUNC_INFO << "Not implemented!";
+    return false;
+}
+
 void QLowEnergyControllerPrivate::sendReadByGroupRequest(
         QLowEnergyHandle start, QLowEnergyHandle end, quint16 type)
 {

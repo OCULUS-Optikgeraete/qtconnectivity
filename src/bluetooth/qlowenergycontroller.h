@@ -120,6 +120,7 @@ public:
     void disconnectFromDevice();
 
     void discoverServices();
+    bool clearServicesCache();
     QList<QBluetoothUuid> services() const;
     QLowEnergyService *createServiceObject(const QBluetoothUuid &service, QObject *parent = Q_NULLPTR);
 

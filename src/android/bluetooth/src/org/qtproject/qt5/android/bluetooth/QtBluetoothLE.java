@@ -560,6 +560,26 @@ public class QtBluetoothLE {
         mBluetoothGatt.disconnect();
     }
 
+    public boolean refreshServices()
+    {
+        if (mBluetoothGatt == null) {
+            return false;
+        }
+
+        try {
+            Method method = mBluetoothGatt.getClass().getMethod("refresh", new Class[0]);
+            if (method == null) {
+                Log.e(TAG, "Can't get BluetoothGatt refresh method");
+                return false;
+            }
+            return ((Boolean) method.invoke(mBluetoothGatt, new Object[0])).booleanValue();
+
+        } catch (Exception ex) {
+            Log.e(TAG, "An exception occured while refreshing device services");
+        }
+        return false;
+    }
+
     public boolean discoverServices()
     {
         return mBluetoothGatt != null && mBluetoothGatt.discoverServices();

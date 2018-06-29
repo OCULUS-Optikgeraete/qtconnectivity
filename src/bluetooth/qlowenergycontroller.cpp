@@ -787,6 +787,10 @@ void QLowEnergyController::disconnectFromDevice()
     problem, the best workaround is to temporarily turn Bluetooth off. This
     causes a reset of the cache data. Currently Android exhibits such a
     cache behavior.
+
+    For Android you can also call \l clearServicesCache() to clear the cache
+
+    \sa clearServicesCache()
  */
 void QLowEnergyController::discoverServices()
 {
@@ -801,6 +805,39 @@ void QLowEnergyController::discoverServices()
 
     d->setState(QLowEnergyController::DiscoveringState);
     d->discoverServices();
+}
+
+/*!
+    Clears the service cache.
+
+    Some platforms internally cache the service list of a device
+    which was discovered in the past. This method clears this cache
+
+    \note Currently this function is only implemented for Android.
+    \note The device has to be connected, before calling this method.
+
+  \sa discoverServices()
+ */
+bool QLowEnergyController::clearServicesCache()
+{
+    Q_D(QLowEnergyController);
+
+    if (d->role != CentralRole) {
+        qCWarning(QT_BT) << "Cannot clear services cache in peripheral role";
+        return false;
+    }
+
+    switch (d->state) {
+    case QLowEnergyController::ConnectedState:
+    case QLowEnergyController::DiscoveredState:
+    case QLowEnergyController::DiscoveringState:
+        break;
+    default:
+        qCWarning(QT_BT) << "Cannot clear services cache when unconnected";
+        return false;
+    }
+
+    return d->clearServicesCache();
 }
 
 /*!
